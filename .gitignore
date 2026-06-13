@@ -1,5 +1,8 @@
+# Power-Lab standard .gitignore (mixed Julia + Python). See LAB_STANDARDS.md §7.
+
 # macOS
 .DS_Store
+**/.DS_Store
 
 # Run logs
 *.log
@@ -9,3 +12,28 @@
 *.jl.*.cov
 *.jl.mem
 /docs/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# Python environments
+.venv/
+venv/
+env/
+ENV/
+
+# Model outputs
+# NOTE: results/base_maluku_2030_reference/ is intentionally committed as a
+# reference/sanity-check case (see LAB_STANDARDS.md §6). New run outputs should
+# not be committed; uncomment the next line if you generate large output trees.
+# /results/
+
+# Editors
+.idea/
+.vscode/

@@ -245,6 +245,8 @@ Contributions are welcome!
 Please open an issue or pull request with a clear description of proposed changes or bugs.  
 Major modifications should first be discussed via an issue to ensure consistency with the existing framework.
 
+This repository follows — and is the reference implementation of — the [Power-Lab Code Standards](https://github.com/Power-Lab/.github/blob/main/CONTRIBUTING.md). See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the per-PR checklist (formatting, naming, config-driven runs, hygiene).
+
 ---
 
 ## Licence
