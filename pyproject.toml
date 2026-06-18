@@ -1,0 +1,21 @@
+# Python dependency + tooling declaration for the job-generation scripts
+# (generate_jobs.py, generate_jobs_local.py, tools/). See LAB_STANDARDS.md §4, §8.
+# Install:  pip install -e .   (or: pip install click pyyaml)
+
+[project]
+name = "village-indonesia-100gw"
+version = "0.1.0"
+description = "Job-generation and tooling for the Village Indonesia capacity expansion model"
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+# pycodestyle (E), Pyflakes (F), isort (I), pyupgrade (UP), naming (N)
+select = ["E", "F", "I", "UP", "N"]

@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Village Indonesia Capacity Expansion Model (100 GW Program)"
+abstract: >-
+  An open-source capacity expansion and operational model for Indonesia's
+  islands and village energy systems, jointly determining generation capacity
+  investments and dispatch under policy scenarios. Written in Julia/JuMP.
+type: software
+license: MIT
+repository-code: "https://github.com/Power-Lab/village-indonesia-100gw"
+authors:
+  # TODO: replace with the full author list and ORCIDs before publication.
+  - family-names: Gnapathy
+    given-names: Kaarthigeswaran
+  - name: "Power-Lab"
+keywords:
+  - capacity expansion
+  - energy systems modeling
+  - Indonesia
+  - village electrification
+  - optimization
