@@ -47,6 +47,7 @@ It is written in **Julia** using **JuMP** for optimisation and is accompanied by
 | `docs/village_adaptation.md` | How the industrial-park framework maps to villages; scenario semantics |
 | `docs/new_region_guide.md` | Step-by-step: add a new island/region (e.g. Timor) |
 | `docs/outputs_guide.md` | Result files, columns, and headline metrics |
+| `docs/run_log.md` | Experiment & run log — every run, its results, and a reproduce command |
 | `docs/environment_setup.md` | Gurobi licensing, Julia/juliaup setup, Python environment |
 | `MODEL.md` | Mathematical formulation cross-referenced to the code |
 | `CHANGES.md` | June 2026 village adaptation: renames, bug fixes, verification record |

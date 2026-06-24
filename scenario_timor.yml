@@ -22,7 +22,8 @@ years:
   - "2030"
 
 scenarios:
-  - gridvillage
+  - village       # coordination OFF — each village an islanded solar+battery+diesel microgrid
+  - gridvillage   # coordination ON  — villages may connect to the shared Timor grid and trade surplus solar
 
 cleans:
   - reference
