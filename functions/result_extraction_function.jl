@@ -14,23 +14,29 @@ function result_extraction(
     # 0) ensure output folder exists
     mkpath(results_dir)
 
-    # 1) Compute generation totals
+    # 1) Compute generation totals.
+    # Materialise each JuMP value container ONCE — indexing value.(...) inside a
+    # loop re-evaluates the whole container every iteration (pathological at
+    # hundreds of villages).
+    GENv = value.(solution.GEN)
     NG = size(inputs.G, 1)
     generation = zeros(NG)
     for i in 1:NG
-        generation[i] = sum(value.(solution.GEN)[:, inputs.G[i]].data)
+        generation[i] = sum(GENv[:, inputs.G[i]].data)
     end
 
+    VILGENv = value.(solution.VIL_GEN)
     NVILG = size(inputs.VIL_G, 1)
     village_generation = zeros(NVILG)
     for i in 1:NVILG
-        village_generation[i] = sum(value.(solution.VIL_GEN)[:, inputs.VIL_G[i]].data)
+        village_generation[i] = sum(VILGENv[:, inputs.VIL_G[i]].data)
     end
 
+    VILGENHEATv = value.(solution.VIL_GEN_HEAT)
     NVILUC = size(inputs.VIL_UC, 1)
     village_heat_generation = zeros(NVILUC)
     for i in 1:NVILUC
-        village_heat_generation[i] = sum(value.(solution.VIL_GEN_HEAT)[:, inputs.VIL_UC[i]].data)
+        village_heat_generation[i] = sum(VILGENHEATv[:, inputs.VIL_UC[i]].data)
     end
 
     total_demand = sum(sum.(eachcol(demand)))
@@ -78,7 +84,12 @@ function result_extraction(
         GWh                 = village_heat_generation ./ 1000
     )
 
-    if all(value.(solution.VIL_IMPORT) .== 0)
+    # Materialise village import/export value containers once (0 sentinel when
+    # not a Grid scenario).
+    VILIMPORTv = solution.VIL_IMPORT == 0 ? 0 : value.(solution.VIL_IMPORT)
+    VILEXPORTv = solution.VIL_EXPORT == 0 ? 0 : value.(solution.VIL_EXPORT)
+
+    if VILIMPORTv == 0 || all(VILIMPORTv .== 0)
         village_import = DataFrame(
             ID               = inputs.VIL,
             Zone             = [inputs.village_zone[v] for v in inputs.VIL],
@@ -89,8 +100,28 @@ function result_extraction(
         village_import = DataFrame(
             ID               = inputs.VIL,
             Zone             = [inputs.village_zone[v] for v in inputs.VIL],
-            Total_Import_MWh = vec(sum(value.(solution.VIL_IMPORT)[:, inputs.VIL].data, dims=1)),
-            Peak_Import_MW   = vec(maximum(value.(solution.VIL_IMPORT)[:, inputs.VIL].data, dims=1)),
+            Total_Import_MWh = vec(sum(VILIMPORTv[:, inputs.VIL].data, dims=1)),
+            Peak_Import_MW   = vec(maximum(VILIMPORTv[:, inputs.VIL].data, dims=1)),
+        )
+    end
+
+    # village grid-connection decision + import/export energy (Grid scenarios only)
+    if solution.VIL_CONNECT == 0
+        village_connection = DataFrame(
+            ID               = inputs.VIL,
+            Zone             = [inputs.village_zone[v] for v in inputs.VIL],
+            Connected        = zeros(Int, length(inputs.VIL)),
+            Total_Import_MWh = zeros(length(inputs.VIL)),
+            Total_Export_MWh = zeros(length(inputs.VIL)),
+        )
+    else
+        CONNECTv = value.(solution.VIL_CONNECT)
+        village_connection = DataFrame(
+            ID               = inputs.VIL,
+            Zone             = [inputs.village_zone[v] for v in inputs.VIL],
+            Connected        = [round(Int, CONNECTv[v]) for v in inputs.VIL],
+            Total_Import_MWh = [sum(VILIMPORTv[:, v].data) for v in inputs.VIL],
+            Total_Export_MWh = [sum(VILEXPORTv[:, v].data) for v in inputs.VIL],
         )
     end
 
@@ -148,6 +179,14 @@ function result_extraction(
         Change_in_Transfer_Capacity = value.(solution.T_CAP).data .- inputs.lines.Line_Max_Flow_MW,
     )
 
+    FLOWv = value.(solution.FLOW)
+    transmission_flow = DataFrame(
+        ID           = inputs.L,
+        Path         = inputs.lines.path_name[inputs.L],
+        Net_Flow_MWh = [sum(FLOWv[:, l].data) for l in inputs.L],
+        Peak_Flow_MW = [maximum(FLOWv[:, l].data) for l in inputs.L],
+    )
+
     num_s = maximum(inputs.S)
     num_z = maximum(inputs.Z)
     nse_r = DataFrame(
@@ -158,14 +197,15 @@ function result_extraction(
         Total_NSE_MWh         = Float64[],
         NSE_Percent_of_Demand = Float64[]
     )
+    NSEv = value.(solution.NSE)
     for s in inputs.S, z in inputs.Z
         push!(nse_r, (
             s,
             z,
             inputs.nse.NSE_Cost[s],
-            maximum(value.(solution.NSE)[:, s, z].data),
-            sum(value.(solution.NSE)[:, s, z].data),
-            sum(value.(solution.NSE)[:, s, z].data) / total_demand * 100
+            maximum(NSEv[:, s, z].data),
+            sum(NSEv[:, s, z].data),
+            sum(NSEv[:, s, z].data) / total_demand * 100
         ))
     end
 
@@ -177,14 +217,15 @@ function result_extraction(
         Total_NSE_MWh         = Float64[],
         NSE_Percent_of_Demand = Float64[]
     )
+    VILNSEv = value.(solution.VIL_NSE)
     for s in inputs.S, vil in inputs.VIL
         push!(nse_r_village, (
             s,
             vil,
             inputs.nse.NSE_Cost[s],
-            maximum(value.(solution.VIL_NSE)[:, s, vil].data),
-            sum(value.(solution.VIL_NSE)[:, s, vil].data),
-            sum(value.(solution.VIL_NSE)[:, s, vil].data) / total_demand * 100
+            maximum(VILNSEv[:, s, vil].data),
+            sum(VILNSEv[:, s, vil].data),
+            sum(VILNSEv[:, s, vil].data) / total_demand * 100
         ))
     end
 
@@ -196,14 +237,15 @@ function result_extraction(
         Total_NSE_MWh         = Float64[],
         NSE_Percent_of_Demand = Float64[]
     )
+    VILNSEHEATv = value.(solution.VIL_NSE_HEAT)
     for s in inputs.S, vil in inputs.VIL
         push!(nse_heat_village, (
             s,
             vil,
             inputs.nse.NSE_Cost[s],
-            maximum(value.(solution.VIL_NSE_HEAT)[:, s, vil].data),
-            sum(value.(solution.VIL_NSE_HEAT)[:, s, vil].data),
-            sum(value.(solution.VIL_NSE_HEAT)[:, s, vil].data) / total_demand * 100
+            maximum(VILNSEHEATv[:, s, vil].data),
+            sum(VILNSEHEATv[:, s, vil].data),
+            sum(VILNSEHEATv[:, s, vil].data) / total_demand * 100
         ))
     end
 
@@ -237,6 +279,8 @@ function result_extraction(
     CSV.write(joinpath(results_dir, "village_generator_results.csv"),   village_generators)
     CSV.write(joinpath(results_dir, "village_heat_generator_results.csv"), village_heat_generators)
     CSV.write(joinpath(results_dir, "village_import_results.csv"),      village_import)
+    CSV.write(joinpath(results_dir, "village_connection_results.csv"),  village_connection)
+    CSV.write(joinpath(results_dir, "transmission_flow_results.csv"),   transmission_flow)
     CSV.write(joinpath(results_dir, "storage_results.csv"),        storage)
     CSV.write(joinpath(results_dir, "village_storage_results.csv"),     village_storage)
     CSV.write(joinpath(results_dir, "transmission_results.csv"),   transmission)
@@ -251,6 +295,8 @@ function result_extraction(
         village_generator_results     = village_generators,
         village_heat_generator_results = village_heat_generators,
         village_import_results        = village_import,
+        village_connection_results    = village_connection,
+        transmission_flow_results     = transmission_flow,
         storage_results          = storage,
         village_storage_results       = village_storage,
         transmission_results     = transmission,

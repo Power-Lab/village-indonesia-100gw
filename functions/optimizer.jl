@@ -94,7 +94,16 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
     if Grid
         @variables(CE, begin
             vVIL_IMPORT[inputs.T, inputs.VIL]  >= 0  #grid import for the villages
-            #vVIL_EXPORT[inputs.T, inputs.VIL]                     >= 0 #grid export for the villages
+            vVIL_EXPORT[inputs.T, inputs.VIL]  >= 0  #grid export (surplus solar) from the villages
+            vVIL_CONNECT[inputs.VIL], Bin            #1 = village is connected to the grid
+        end)
+        #a village can only import from / export to the grid if it is connected;
+        #import/export are also capped by its interconnection capacity.
+        @constraints(CE, begin
+            cVILImportConnect[t in inputs.T, vil in inputs.VIL],
+                vVIL_IMPORT[t,vil] <= inputs.village_connect_max[vil]*vVIL_CONNECT[vil]
+            cVILExportConnect[t in inputs.T, vil in inputs.VIL],
+                vVIL_EXPORT[t,vil] <= inputs.village_connect_max[vil]*vVIL_CONNECT[vil]
         end)
     end
 
@@ -122,7 +131,8 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
         sum(vCHARGE[t,g] for g in intersect(inputs.generators[inputs.generators.Zone.==z,:R_ID],inputs.STOR)) -
         inputs.demand[t,z] - 
         sum(inputs.lines[l,Symbol(string("z",z))] * vFLOW[t,l] for l in inputs.L) -
-        sum(vVIL_IMPORT[t,vil] for vil in inputs.VIL if inputs.village_zone[vil] == z) == 0
+        sum(vVIL_IMPORT[t,vil] for vil in inputs.VIL if inputs.village_zone[vil] == z) +
+        sum(vVIL_EXPORT[t,vil] for vil in inputs.VIL if inputs.village_zone[vil] == z) == 0
         )
     else
         #Supply Demand Balance Constraint
@@ -320,9 +330,9 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
                 cVILElectricityBalance[t in inputs.T, vil in inputs.VIL], 
                 sum(vVIL_GEN[t,g] for g in intersect(inputs.village_generators[inputs.village_generators.Village.==vil,:R_ID],inputs.VIL_RE)) +
                 sum(vVIL_IMPORT[t,vil]) +
-                sum(vVIL_NSE[t,s,vil] for s in inputs.VIL_S) - 
+                sum(vVIL_NSE[t,s,vil] for s in inputs.VIL_S) -
                 sum(vVIL_CHARGE[t,g] for g in intersect(inputs.village_generators[inputs.village_generators.Village.==vil,:R_ID],inputs.VIL_STOR)) -
-                # include export variable here -
+                sum(vVIL_EXPORT[t,vil]) -
                 inputs.village_demand[t,vil] == 0
             end);
 
@@ -333,7 +343,7 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
                 sum(vVIL_IMPORT[t,vil]) +
                 sum(vVIL_NSE[t,s,vil] for s in inputs.VIL_S) -
                 sum(vVIL_CHARGE[t,g] for g in intersect(inputs.village_generators[inputs.village_generators.Village.==vil,:R_ID],inputs.VIL_STOR)) -
-                # include export variable here -
+                sum(vVIL_EXPORT[t,vil]) -
                 inputs.village_demand[t,vil] == 0
             end);
 
@@ -341,9 +351,9 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
             @constraints(CE, begin
                 cVILElectricityBalance[t in inputs.T, vil in inputs.VIL], 
                 sum(vVIL_GEN[t,g] for g in intersect(inputs.village_generators[inputs.village_generators.Village.==vil,:R_ID],inputs.VIL_UC)) +
-                sum(vVIL_IMPORT[t,vil]) + 
+                sum(vVIL_IMPORT[t,vil]) +
                 sum(vVIL_NSE[t,s,vil] for s in inputs.VIL_S) -
-                # include export variable here -
+                sum(vVIL_EXPORT[t,vil]) -
                 inputs.village_demand[t,vil] == 0
             end);
         end
@@ -675,12 +685,22 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
             0
         );
     end
+
+    # annualised cost of connecting villages to the grid (co-optimised decision)
+    if Grid
+        @expression(CE, eVILConnectCost,
+            sum(inputs.village_connect_cost[vil]*vVIL_CONNECT[vil] for vil in inputs.VIL)
+        );
+    else
+        @expression(CE, eVILConnectCost, 0);
+    end
+
     @expression(CE, eCostObjective,
     eFixedCostsGeneration + eFixedCostsVILGeneration + 
     eFixedCostsStorage + eVILFixedCostsStorage +
-    eFixedCostsTransmission + eGridImportCosts +
+    eFixedCostsTransmission + eGridImportCosts + eVILConnectCost +
     eVariableCostsGrid + eVariableCostsVILED + eVariableCostsVILUC +
-    eNSECosts + eVILNSECosts + eVILNSEHeatCosts + 
+    eNSECosts + eVILNSECosts + eVILNSEHeatCosts +
     eStartCostsGrid + eStartCostsVIL
         );
     
@@ -704,8 +724,12 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
 
     if Grid
         VIL_IMPORT = vVIL_IMPORT
+        VIL_EXPORT = vVIL_EXPORT
+        VIL_CONNECT = vVIL_CONNECT
     else
         VIL_IMPORT = 0
+        VIL_EXPORT = 0
+        VIL_CONNECT = 0
     end
 
     VIL_E_CAP = vVIL_E_CAP
@@ -719,6 +743,9 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
         VIL_GEN = vVIL_GEN,
         VIL_GEN_HEAT = vVIL_GEN_HEAT,
         VIL_IMPORT = VIL_IMPORT,
+        VIL_EXPORT = VIL_EXPORT,
+        VIL_CONNECT = VIL_CONNECT,
+        FLOW = vFLOW,
         T_CAP = vT_CAP,
         NSE = vNSE,
         VIL_NSE = vVIL_NSE,

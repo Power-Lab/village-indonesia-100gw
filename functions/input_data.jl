@@ -148,6 +148,24 @@ function input_data(filepath)
         village_zone[v] = village_generators.Zone[idx]
     end
 
+    #per-village grid interconnection cost ($/yr) and capacity cap (MW), read from
+    #village_connection.csv; drives the co-optimised connect-vs-island decision in
+    #optimizer.jl. Missing rows / missing file default to free connection with a
+    #generous cap (i.e. reproduces the prior always-connected behaviour).
+    village_connect_cost = Dict{Int,Float64}()
+    village_connect_max  = Dict{Int,Float64}()
+    if isfile(joinpath(filepath, "village_connection.csv"))
+        vc = DataFrame(CSV.File(joinpath(filepath, "village_connection.csv")))
+        for r in eachrow(vc)
+            village_connect_cost[r.Village] = r.Cost_per_yr
+            village_connect_max[r.Village]  = r.Max_Connect_MW
+        end
+    end
+    for v in VIL
+        get!(village_connect_cost, v, 0.0)
+        get!(village_connect_max, v, 1.0e6)
+    end
+
     #Village Demand
     if isfile(joinpath(filepath, "village_demand.csv"))
         village_demand_input = DataFrame(CSV.File(joinpath(filepath, "village_demand.csv")));
@@ -348,6 +366,8 @@ function input_data(filepath)
         VIL = VIL,
         VIL_G = VIL_G,
         village_zone = village_zone,
+        village_connect_cost = village_connect_cost,
+        village_connect_max = village_connect_max,
         VIL_S = VIL_S,
         VIL_UC_OLD = VIL_UC_OLD,
         VIL_UC_NEW = VIL_UC_NEW,

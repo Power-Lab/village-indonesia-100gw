@@ -1,0 +1,2 @@
+R_ID,Zone,Resource,technology,owner,Existing_Cap_MW,Existing_Cap_MWh,New_Build,Max_Cap_MW,Inv_Cost_per_MWyr,Inv_Cost_per_MWhyr,Fixed_OM_Cost_per_MWyr,Fixed_OM_Cost_per_MWhyr,Var_OM_Cost_per_MWh,Min_Power_MW,Ramp_Up_Percentage,Ramp_Dn_Percentage,Commit,Start_Cost_per_MW,Start_Fuel_MMBTU_per_MW,Heat_Rate_MMBTU_per_MWh,Fuel,Up_Time,Down_Time,Eff_Up,Eff_Down,STOR,VRE,RE,THERM
+1,1,pln_timor_diesel,diesel,pln,122.131,0,0,0,0,0,15000,0,8.0,0,1.0,1.0,0,0,0,10.5,diesel,0,0,1,1,0,0,0,1

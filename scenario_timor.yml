@@ -1,0 +1,39 @@
+# scenario_timor.yml
+#
+# Timor village-solar study (real data, four kabupaten — see
+# docs/ntt_data_integration.md). Datasets are built by:
+#   python -m tools.ntt.build_timor --src-dir <workbooks> [--kabupaten belu]
+#
+# gridvillage co-optimises each village's solar + battery + existing diesel and
+# its grid connection: a solar-rich village can connect and export surplus to
+# supplement deficit villages, or stay an islanded microgrid if connecting isn't
+# worth the interconnection cost (village_connection.csv).
+#
+# Start with the smallest kabupaten (timor_belu, 81 villages) to verify, then
+# scale to the full island (timor, ~780 villages).
+
+# Full Timor island = all four kabupaten (~780 villages). For a quick test,
+# swap `timor` for `timor_belu` (81 villages) and rebuild with
+#   python -m tools.ntt.build_timor --src-dir <workbooks> --kabupaten belu
+islands:
+  - timor
+
+years:
+  - "2030"
+
+scenarios:
+  - gridvillage
+
+cleans:
+  - reference
+
+# Optional model parameters passed through to every job's config.json
+mipgap: 0.01
+
+# Baseline BAU CO2 emissions (tonnes CO2) — placeholder for clean runs
+island_params:
+  timor: 3000000
+
+co2_limits:
+  "2030":
+    timor: 3000000
