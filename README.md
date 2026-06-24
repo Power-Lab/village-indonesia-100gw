@@ -163,7 +163,7 @@ See `scenario_maluku_test.yml` for a minimal working example and `scenario_2030_
 
 ## Model Assumptions
 
-Defaults preserve the original study's behaviour; the first four are overridable
+Defaults preserve the original study's behaviour; the first six are overridable
 per run by adding the key to your scenario YAML (top level) or a job's
 `config.json`.
 
@@ -173,6 +173,8 @@ per run by adding the key to your scenario YAML (top level) or a job's
 | `RE_limit` | `0.34` | Minimum grid renewable share (`clean` runs only; counts grid generators' `RE` flag — village generation does not contribute) | config key |
 | `import_price` | `59.0` $/MWh (×1.21 under `highimportprice`) | Flat price villages pay for grid imports | config key |
 | `village_storage_max_mwh` | `208.0` | Per-unit cap on new village storage energy | config key |
+| `connection_cost_scale` | `1.0` | Multiplier on every village's interconnection cost (`village_connection.csv`) — the connect-vs-island sensitivity lever | config key |
+| `lp_method` | `2` | Gurobi LP `Method` (2 = barrier; avoids the concurrent-spin overhead the default incurs on these large LPs) | config key |
 | VOLL & NSE segments | data | Value of lost load and curtailment segments | `demand.csv` / `village_demand.csv` |
 | Solve time limit | 72 h | Gurobi `TimeLimit` | `functions/optimizer.jl` |
 | Village `Max_Cap_MW` | not enforced | Village new-build power capacity is unbounded | `functions/optimizer.jl` (commented out) |

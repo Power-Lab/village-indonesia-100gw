@@ -66,7 +66,7 @@ def main(scenarios_file, submit_script, output_root, submit):
             'CO2_limit':          co2_lim
         }
         # optional model parameters passed through from the scenario YAML
-        for key in ('mipgap', 'RE_limit', 'import_price', 'village_storage_max_mwh'):
+        for key in ('mipgap', 'RE_limit', 'import_price', 'village_storage_max_mwh', 'connection_cost_scale', 'lp_method'):
             if key in data:
                 cfg[key] = data[key]
         (job_dir / 'config.json').write_text(json.dumps(cfg, indent=2))

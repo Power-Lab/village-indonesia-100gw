@@ -1,4 +1,4 @@
-function input_data(filepath)
+function input_data(filepath; connection_cost_scale::Float64 = 1.0)
 
     #GRID
     #Generators
@@ -157,7 +157,7 @@ function input_data(filepath)
     if isfile(joinpath(filepath, "village_connection.csv"))
         vc = DataFrame(CSV.File(joinpath(filepath, "village_connection.csv")))
         for r in eachrow(vc)
-            village_connect_cost[r.Village] = r.Cost_per_yr
+            village_connect_cost[r.Village] = r.Cost_per_yr * connection_cost_scale
             village_connect_max[r.Village]  = r.Max_Connect_MW
         end
     end

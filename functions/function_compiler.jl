@@ -19,10 +19,12 @@ function function_compiler(
         NoCoal::Bool,
         CO235reduction::Bool,
         BAUCO2emissions;
-        village_storage_max_mwh::Float64 = 208.0
+        village_storage_max_mwh::Float64 = 208.0,
+        connection_cost_scale::Float64 = 1.0,
+        lp_method::Int = 2
     )
     # 1) Load inputs
-    inputs = input_data(filepath)
+    inputs = input_data(filepath; connection_cost_scale = connection_cost_scale)
 
     # 2) Run the optimization
     solution = capacity_expansion(
@@ -38,7 +40,8 @@ function function_compiler(
         NoCoal,
         CO235reduction,
         BAUCO2emissions;
-        village_storage_max_mwh = village_storage_max_mwh
+        village_storage_max_mwh = village_storage_max_mwh,
+        lp_method = lp_method
     )
 
     # 3) Extract & write results into the folder

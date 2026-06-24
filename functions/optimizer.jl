@@ -1,9 +1,10 @@
-function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constraint, RE_limit, Grid, VillageBuild, ImportPrice, NoCoal, CO235reduction, BAUCO2emissions; village_storage_max_mwh = 208.0)
+function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constraint, RE_limit, Grid, VillageBuild, ImportPrice, NoCoal, CO235reduction, BAUCO2emissions; village_storage_max_mwh = 208.0, lp_method::Int = 2)
 
     CE = Model(Gurobi.Optimizer)
     set_attribute(CE, "MIPGap", mipgap)
     #set_attribute(CE, "LogFile", "gurobi_output.log")
     set_attribute(CE, "Crossover", 0)
+    set_attribute(CE, "Method", lp_method)    # 2 = barrier (deterministic); avoids the ~500 s concurrent-spin the default (-1) incurs on these large LPs
     #set_attribute(CE, "UnboundedRay", 1)
     #set_attribute(CE, "Nodes", 10)
     set_attribute(CE, "TimeLimit", 3*24*60*60)

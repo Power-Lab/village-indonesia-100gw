@@ -33,6 +33,8 @@ CO2_constraint = preflight.clean_flags.CO2_constraint
 RE_constraint  = preflight.clean_flags.RE_constraint
 RE_limit       = Float64(get(cfg, "RE_limit", 0.34))          # min RE share (clean runs)
 village_storage_max_mwh = Float64(get(cfg, "village_storage_max_mwh", 208.0)) # per-unit cap on new village storage
+connection_cost_scale = Float64(get(cfg, "connection_cost_scale", 1.0))      # multiplier on per-village interconnection cost (sensitivity lever)
+lp_method      = Int(get(cfg, "lp_method", 2))                               # Gurobi LP Method (2 = barrier)
 
 # 4) Scenario toggles
 Grid = preflight.flags.Grid
@@ -67,5 +69,7 @@ function_compiler(
     NoCoal,
     CO235reduction,
     BAUCO2emissions;
-    village_storage_max_mwh = village_storage_max_mwh
+    village_storage_max_mwh = village_storage_max_mwh,
+    connection_cost_scale = connection_cost_scale,
+    lp_method = lp_method
 )
