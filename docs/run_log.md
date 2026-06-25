@@ -26,7 +26,32 @@ a `results/<run-name>/` folder.
 ## Summary
 | Exp | Date | Question | Island / Year | Scenarios | Key change | Headline result | Status |
 |-----|------|----------|---------------|-----------|------------|-----------------|--------|
+| [EXP-002](#exp-002--interconnection-cost-sensitivity-sweep) | 2026-06-25 | Where does coordination start to pay off? | timor / 2030 | `gridvillage` × cost scale | `connection_cost_scale` sweep | **nowhere** — even free connection saves 0.004% ($2.6k); 7.75 MWh traded | ✅ complete |
 | [EXP-001](#exp-001--full-timor-coordination-off-vs-on-baseline) | 2026-06-24 | Does grid coordination lower cost for full Timor? | timor / 2030 | `village`, `gridvillage` | baseline (first-pass interconnection costs) | OFF = ON = **$64.63 M/yr**; 0/780 connect | ✅ complete |
+
+---
+
+## EXP-002 — Interconnection-cost sensitivity sweep
+**Date:** 2026-06-25 | **Status:** ✅ complete (stopped after probe — see conclusion) | **Configs:** `jobs/gridvillage_timor_2030_reference_cc<scale>/`
+
+**Question.** At what interconnection-cost level does grid coordination start to pay off? (EXP-001 baseline: at full cost, 0/780 connect, OFF = ON = $64.63 M.)
+
+**Setup.** `gridvillage`, timor / 2030 / reference, 780 villages. Sweep the new `connection_cost_scale` key (multiplies every village's `Cost_per_yr`); `lp_method=2` (barrier) by default. Design: run `scale=0` (free connection) FIRST to bound the maximum coordination benefit — if it yields ~0 benefit, coordination doesn't help at any cost and we stop; otherwise map the curve over {0, 0.1, 0.25, 0.5, 0.75}.
+
+**Runs.**
+| Run | scale | Solver | Wall time | Connected | Total $M | Outcome |
+|-----|-------|--------|-----------|-----------|----------|---------|
+| `..._cc0.0` | 0.0 | LP\* | 14.4 min | 780/780 | 64.62884 | optimal, gap 0% |
+
+\*Nominally MILP, but presolve fixed all 780 connection binaries (free ⇒ connect-all is dominant), so it solved as a pure LP — no branching.
+
+**Results.** Free, unlimited interconnection saves only **$2,569/yr vs the $64.63 M standalone baseline — 0.004%**. All 780 villages connect, but total energy traded across the whole island is **7.75 MWh/yr** (331 villages import a trace, 8 export; import = export, balanced). The sharing mechanism is exercised, but the volume is a rounding error.
+
+**Conclusion.** **Grid coordination does not help Timor at any interconnection cost.** The `scale=0` run is the benefit ceiling; any positive cost only shrinks it toward the $0 already seen at `scale=1` (EXP-001). So the curve `{0.1, 0.25, 0.5, 0.75}` was **not run** — it would trace a flat ~0 line. Root cause: **village homogeneity** — 780 villages with similarly-sized solar+battery and similar GHI/demand profiles rarely have surplus/deficit that line up, so there's almost nothing to arbitrage. Interconnection-cost calibration is *not* the value lever after all.
+
+**Artifacts.** `results/gridvillage_timor_2030_reference_cc0.0/`, log `logs/sweep_cc0.log`.
+
+**Reproduce.** `julia --project=. run_model.jl --config jobs/gridvillage_timor_2030_reference_cc0/config.json`
 
 ---
 

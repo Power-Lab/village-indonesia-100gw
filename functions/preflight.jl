@@ -134,7 +134,9 @@ function run_preflight(config_path::AbstractString, repo_root::AbstractString)
     flags = scenario_settings(cfg["scenario"])
     clean_flags = clean_settings(cfg["clean"])
     inputs_path = joinpath(repo_root, "data_indonesia", cfg["year"], cfg["island"])
-    results_dir = joinpath(repo_root, "results", "$(cfg["scenario"])_$(cfg["island"])_$(cfg["year"])_$(cfg["clean"])")
+    cc_scale = Float64(get(cfg, "connection_cost_scale", 1.0))
+    cc_suffix = cc_scale == 1.0 ? "" : "_cc$(cc_scale)"
+    results_dir = joinpath(repo_root, "results", "$(cfg["scenario"])_$(cfg["island"])_$(cfg["year"])_$(cfg["clean"])$(cc_suffix)")
 
     validate_gurobi()
     validate_input_files(inputs_path, flags)
