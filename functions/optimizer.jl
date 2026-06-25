@@ -108,13 +108,18 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
         end)
     end
 
-    # for g in inputs.VIL_UC_NEW[inputs.village_generators[inputs.VIL_UC_NEW, :Max_Cap_MW].>0]
-    #     set_upper_bound(vVIL_NEW_CAP_UC[g], inputs.village_generators.Max_Cap_MW[g])
-    # end
+    # Per-village land/resource ceiling on new-build onsite capacity.
+    # Max_Cap_MW == 0 means unbounded (no land data); a positive value caps the
+    # new build, e.g. the developable-solar MW from the GIS resource assessment
+    # (tools/resource_siting.py -> village solar Max_Cap_MW). Solar is Commit=0
+    # so it lives in VIL_ED_NEW; the UC loop covers any committed onsite unit.
+    for g in inputs.VIL_UC_NEW[inputs.village_generators[inputs.VIL_UC_NEW, :Max_Cap_MW].>0]
+        set_upper_bound(vVIL_NEW_CAP_UC[g], inputs.village_generators.Max_Cap_MW[g])
+    end
 
-    # for g in inputs.VIL_ED_NEW[inputs.village_generators[inputs.ED_NEW, :Max_Cap_MW].>0]
-    #     set_upper_bound(vVIL_NEW_CAP_ED[g], inputs.village_generators.Max_Cap_MW[g])
-    # end
+    for g in inputs.VIL_ED_NEW[inputs.village_generators[inputs.VIL_ED_NEW, :Max_Cap_MW].>0]
+        set_upper_bound(vVIL_NEW_CAP_ED[g], inputs.village_generators.Max_Cap_MW[g])
+    end
 
     for g in intersect(inputs.VIL_STOR, inputs.VIL_NEW)
         set_upper_bound(vVIL_NEW_E_CAP[g], village_storage_max_mwh)

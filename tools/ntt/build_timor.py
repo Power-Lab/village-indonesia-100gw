@@ -94,6 +94,47 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return r * 2 * math.asin(math.sqrt(a))
 
 
+def solar_land_caps(villages, gis_dir, candidate, radius_km, mode, fallback="median"):
+    """Per-village solar Max_Cap_MW (developable land) from the GIS resource
+    assessment, keyed by village id (1..NV). Returns None — leaving every village
+    uncapped (Max_Cap_MW = 0) — if geopandas or the candidate layer is missing, so
+    a fresh build never hard-fails on the optional GIS dependency.
+
+    Villages without coordinates fall back to the regional median ceiling, the
+    same policy as tools.ntt.solar_potential (the standalone retrofit tool)."""
+    cand_path = Path(candidate)
+    if not cand_path.is_absolute():
+        cand_path = Path(gis_dir).expanduser() / candidate
+    if not cand_path.exists():
+        print(f"  [solar-cap] candidate layer not found: {cand_path}\n"
+              f"             leaving solar Max_Cap_MW=0 (uncapped). Build it with "
+              f"tools/candidate_land.py first.")
+        return None
+    try:
+        import sys
+        sys.path.insert(0, str(REPO))
+        import pandas as pd
+        from tools.resource_siting import village_solar_capacity
+    except Exception as ex:  # geopandas/rasterio not installed
+        print(f"  [solar-cap] resource assessment unavailable ({ex}); leaving Max_Cap_MW=0")
+        return None
+
+    df = pd.DataFrame({"lat": [v.lat for v in villages], "lon": [v.lon for v in villages]})
+    res = village_solar_capacity(df, gis_dir=str(Path(gis_dir).expanduser()),
+                                 candidate=str(cand_path), radius_km=radius_km, mode=mode)
+    sited = res["solar_MW"].notna()
+    fill = (round(float(res.loc[sited, "solar_MW"].median()), 1)
+            if (fallback == "median" and sited.any()) else 0.0)
+    caps = {}
+    for i in range(len(villages)):
+        mw = res["solar_MW"].iloc[i]
+        caps[i + 1] = round(float(mw), 1) if pd.notna(mw) else fill
+    n_fallback = int((~sited).sum())
+    print(f"  [solar-cap] sited {int(sited.sum())}/{len(villages)} villages "
+          f"(buffer {radius_km} km); {n_fallback} -> median {fill} MW")
+    return caps
+
+
 # ------------------------------------------------------------------ generators
 def diesel_row(rid, vid, name, cap):
     """Existing village diesel, Commit=0 (LP), capital sunk, high fuel cost."""
@@ -114,7 +155,8 @@ def battery_row(rid, vid, name, inv_mw, inv_mwh, fom):
             0, 0, 0, "None", 0, 0, 0.92, 0.92, 1, 0, 0, 0]
 
 
-def build(villages, out_dir, year):
+def build(villages, out_dir, year, solar_cap=False, gis_dir="~/Desktop/QGIS_NEW",
+          candidate="candidate_solar_timor.gpkg", solar_radius_km=5.0, solar_mode="buffer"):
     out_dir.mkdir(parents=True, exist_ok=True)
     NV = len(villages)
 
@@ -140,6 +182,13 @@ def build(villages, out_dir, year):
         gen_rows.append(battery_row(rid, vid, f"batt_{tag}",
                                     cst.battery_inv_per_mwyr, cst.battery_inv_per_mwhyr,
                                     cst.battery_fom_per_mwyr)); gen_techs.append("battery"); rid += 1
+    # optional: cap each village's solar by developable land (GIS resource assessment)
+    if solar_cap:
+        caps = solar_land_caps(villages, gis_dir, candidate, solar_radius_km, solar_mode)
+        if caps:
+            for row in gen_rows:
+                if row[4] == "solar":          # row[2]=village id, row[9]=Max_Cap_MW
+                    row[9] = caps.get(row[2], 0)
     write_csv(out_dir / "village_generators.csv", VIL_GEN_COLS, gen_rows)
 
     # --- village_demand.csv (scalar block + hourly per village) -------------
@@ -257,6 +306,15 @@ def main():
                     help="restrict to one kabupaten (e.g. belu); default = all four")
     ap.add_argument("--year", default="2030")
     ap.add_argument("--name", default="timor", help="output folder name under data_indonesia/<year>/")
+    ap.add_argument("--solar-cap", action="store_true",
+                    help="set each village's solar Max_Cap_MW from the GIS land resource "
+                         "assessment (needs geopandas + a candidate-solar layer); without "
+                         "it solar stays uncapped (Max_Cap_MW=0)")
+    ap.add_argument("--gis-dir", default="~/Desktop/QGIS_NEW")
+    ap.add_argument("--candidate", default="candidate_solar_timor.gpkg",
+                    help="candidate-solar layer in --gis-dir (or absolute path)")
+    ap.add_argument("--solar-radius-km", type=float, default=5.0)
+    ap.add_argument("--solar-mode", default="buffer", choices=["buffer", "allocate"])
     args = ap.parse_args()
 
     src = Path(args.src_dir)
@@ -272,7 +330,9 @@ def main():
 
     out_dir = REPO / "data_indonesia" / args.year / name
     print(f"Writing dataset to {out_dir.relative_to(REPO)} ...")
-    nv, grid_peak = build(villages, out_dir, args.year)
+    nv, grid_peak = build(villages, out_dir, args.year, solar_cap=args.solar_cap,
+                          gis_dir=args.gis_dir, candidate=args.candidate,
+                          solar_radius_km=args.solar_radius_km, solar_mode=args.solar_mode)
     total_gwh = sum(get_calculator(v.archetype).demand(v).annual_kwh for v in villages) / 1e6
     print(f"\nDone: {nv} villages, total demand {total_gwh:,.1f} GWh/yr, "
           f"aggregate peak {grid_peak:.1f} MW.")
