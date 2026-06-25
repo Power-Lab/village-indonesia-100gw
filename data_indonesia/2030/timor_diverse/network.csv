@@ -1,0 +1,2 @@
+r_id,path_name,substation_path,z1,voltage_kV,distance_km,B,Line_Max_Flow_MW,Line_Max_Reinforcement_MW,Line_Reinforcement_Cost_per_MWyr
+1,timor_internal,timor_bus,0,70,1,100,0,0,1

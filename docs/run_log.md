@@ -26,8 +26,28 @@ a `results/<run-name>/` folder.
 ## Summary
 | Exp | Date | Question | Island / Year | Scenarios | Key change | Headline result | Status |
 |-----|------|----------|---------------|-----------|------------|-----------------|--------|
+| [EXP-003](#exp-003--diversity-stress-test-do-archetype-shapes-unlock-coordination) | 2026-06-25 | Does load-shape diversity unlock coordination value? | timor_diverse / 2030 | village vs gridvillage(free) | 390/780 villages reshaped to midday load | 🟡 running |
 | [EXP-002](#exp-002--interconnection-cost-sensitivity-sweep) | 2026-06-25 | Where does coordination start to pay off? | timor / 2030 | `gridvillage` × cost scale | `connection_cost_scale` sweep | **nowhere** — even free connection saves 0.004% ($2.6k); 7.75 MWh traded | ✅ complete |
 | [EXP-001](#exp-001--full-timor-coordination-off-vs-on-baseline) | 2026-06-24 | Does grid coordination lower cost for full Timor? | timor / 2030 | `village`, `gridvillage` | baseline (first-pass interconnection costs) | OFF = ON = **$64.63 M/yr**; 0/780 connect | ✅ complete |
+
+---
+
+## EXP-003 — Diversity stress test: do archetype shapes unlock coordination?
+**Date:** 2026-06-25 | **Status:** 🟡 running | **Dataset:** `data_indonesia/2030/timor_diverse/` (built by `make_diverse_demand.py`)
+
+**Question.** EXP-002 found ~0 coordination benefit and pinned the cause to homogeneity (773/780 villages share one residential load shape). Does injecting load-**shape** diversity unlock coordination value — i.e., could real per-archetype load calculators actually matter?
+
+**Setup.** Copy of the real Timor dataset; **half the villages (390) reshaped to a midday-peaking load** (energy-preserved per village), the other 390 kept on the real residential/evening profile. Everything else identical (magnitudes, solar, costs, connection costs). Single shared bus, so daytime- and evening-load villages can trade. Compare the coordination benefit (OFF vs free ON) against the homogeneous EXP-002 result (0.004%, 7.75 MWh).
+
+**Runs.**
+| Run | scenario / scale | Connected | Traded MWh | Total $M | Outcome |
+|-----|------------------|-----------|------------|----------|---------|
+| `village_timor_diverse` | OFF | — | — | — | 🟡 running |
+| `gridvillage_timor_diverse_cc0.0` | ON, free | — | — | — | 🟡 queued |
+
+**Results.** _pending._
+
+**Artifacts.** `results/village_timor_diverse_2030_reference/`, `results/gridvillage_timor_diverse_2030_reference_cc0.0/`, log `logs/diverse_test.log`, builder `make_diverse_demand.py`.
 
 ---
 

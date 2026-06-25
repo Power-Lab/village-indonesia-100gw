@@ -1,0 +1,11 @@
+{
+  "island": "timor",
+  "year": "2030",
+  "scenario": "gridvillage",
+  "clean": "reference",
+  "CO235reduction": false,
+  "BAUCO2emissions": 0.0,
+  "CO2_limit": 3000000,
+  "mipgap": 0.01,
+  "connection_cost_scale": 0.0
+}

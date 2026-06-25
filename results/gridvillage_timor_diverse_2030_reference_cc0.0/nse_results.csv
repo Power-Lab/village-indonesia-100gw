@@ -1,0 +1,5 @@
+Segment,Zone,NSE_Price,Max_NSE_MW,Total_NSE_MWh,NSE_Percent_of_Demand
+1,1,2000.0,0.0,0.0,NaN
+2,1,1800.0,0.0,0.0,NaN
+3,1,1100.0,0.0,0.0,NaN
+4,1,400.0,0.0,0.0,NaN
