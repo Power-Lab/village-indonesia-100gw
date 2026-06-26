@@ -123,6 +123,7 @@ function input_data(filepath)
             Village                     = Int[],
             technology                  = String[],
             Existing_Cap_MW             = Float64[],
+            Max_Cap_MW                  = Float64[],
             Fuel                        = String[],
             Heat_Rate_MMBTU_per_MWh     = Float64[],
             Var_OM_Cost_per_MWh         = Float64[],
