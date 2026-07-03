@@ -13,3 +13,6 @@
 # Python
 __pycache__/
 *.pyc
+
+# ERA5 download + hourly CF (large, regeneratable via tools/solar_resource_era5.py)
+solar_era5/

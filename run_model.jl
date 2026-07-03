@@ -35,6 +35,7 @@ RE_limit       = Float64(get(cfg, "RE_limit", 0.34))          # min RE share (cl
 village_storage_max_mwh = Float64(get(cfg, "village_storage_max_mwh", 208.0)) # per-unit cap on new village storage
 connection_cost_scale = Float64(get(cfg, "connection_cost_scale", 1.0))      # multiplier on per-village interconnection cost (sensitivity lever)
 lp_method      = Int(get(cfg, "lp_method", 2))                               # Gurobi LP Method (2 = barrier)
+battery_duration_h = Float64(get(cfg, "battery_duration_h", 0.0))            # fixed battery duration (h); 0 = off (co-optimised)
 
 # 4) Scenario toggles
 Grid = preflight.flags.Grid
@@ -71,5 +72,6 @@ function_compiler(
     BAUCO2emissions;
     village_storage_max_mwh = village_storage_max_mwh,
     connection_cost_scale = connection_cost_scale,
-    lp_method = lp_method
+    lp_method = lp_method,
+    battery_duration_h = battery_duration_h
 )

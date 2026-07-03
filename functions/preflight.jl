@@ -136,7 +136,9 @@ function run_preflight(config_path::AbstractString, repo_root::AbstractString)
     inputs_path = joinpath(repo_root, "data_indonesia", cfg["year"], cfg["island"])
     cc_scale = Float64(get(cfg, "connection_cost_scale", 1.0))
     cc_suffix = cc_scale == 1.0 ? "" : "_cc$(cc_scale)"
-    results_dir = joinpath(repo_root, "results", "$(cfg["scenario"])_$(cfg["island"])_$(cfg["year"])_$(cfg["clean"])$(cc_suffix)")
+    bd_h = Float64(get(cfg, "battery_duration_h", 0.0))
+    bd_suffix = bd_h > 0 ? "_bd$(bd_h)" : ""
+    results_dir = joinpath(repo_root, "results", "$(cfg["scenario"])_$(cfg["island"])_$(cfg["year"])_$(cfg["clean"])$(cc_suffix)$(bd_suffix)")
 
     validate_gurobi()
     validate_input_files(inputs_path, flags)

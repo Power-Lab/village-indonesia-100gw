@@ -1,4 +1,4 @@
-function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constraint, RE_limit, Grid, VillageBuild, ImportPrice, NoCoal, CO235reduction, BAUCO2emissions; village_storage_max_mwh = 208.0, lp_method::Int = 2)
+function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constraint, RE_limit, Grid, VillageBuild, ImportPrice, NoCoal, CO235reduction, BAUCO2emissions; village_storage_max_mwh = 208.0, lp_method::Int = 2, battery_duration_h::Float64 = 0.0)
 
     CE = Model(Gurobi.Optimizer)
     set_attribute(CE, "MIPGap", mipgap)
@@ -123,6 +123,15 @@ function capacity_expansion(inputs, mipgap, CO2_constraint, CO2_limit, RE_constr
 
     for g in intersect(inputs.VIL_STOR, inputs.VIL_NEW)
         set_upper_bound(vVIL_NEW_E_CAP[g], village_storage_max_mwh)
+    end
+
+    # Optional fixed battery duration: energy (MWh) = duration_h x power (MW).
+    # 0 = off (power/energy co-optimised). A positive value makes storage a
+    # fixed-duration product, so the battery power capex actually binds the
+    # energy build (otherwise duration floats, e.g. the ~5.3 h emergent case).
+    if battery_duration_h > 0
+        @constraint(CE, cVILStorDuration[g in intersect(inputs.VIL_STOR, inputs.VIL_NEW)],
+            vVIL_E_CAP[g] == battery_duration_h * vVIL_CAP[g])
     end
 
 

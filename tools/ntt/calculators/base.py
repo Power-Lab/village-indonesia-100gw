@@ -96,7 +96,7 @@ class Calculator:
     solar_cf = 0.16                      # annual PV capacity factor
     battery_to_pv_ratio = 2.0            # BESS kWh per PV kWp (rule of thumb)
     solar_idr_per_kwp = 8_600_000        # KDKMP PV all-in (Rp/kWp)
-    battery_idr_per_kw = 0.0
+    battery_idr_per_kw = 3_270_700       # -> ~$30k/MW-yr power component (docs §4); was 0 (free power)
     battery_idr_per_kwh = 4_500_000      # KDKMP BESS all-in (Rp/kWh)
 
     def demand(self, village: "Village") -> "DemandResult":
