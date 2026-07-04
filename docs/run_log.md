@@ -26,14 +26,60 @@ a `results/<run-name>/` folder.
 ## Summary
 | Exp | Date | Question | Island / Year | Scenarios | Key change | Headline result | Status |
 |-----|------|----------|---------------|-----------|------------|-----------------|--------|
-| [EXP-003](#exp-003--diversity-stress-test-do-archetype-shapes-unlock-coordination) | 2026-06-25 | Does load-shape diversity unlock coordination value? | timor_diverse / 2030 | village vs gridvillage(free) | 390/780 villages reshaped to midday load | 🟡 running |
+| [EXP-005](#exp-005--realism-era5-real-solar--4h-costed-battery) | 2026-07-03 | Does real solar + a realistic battery change coordination or reliability? | timor & timor_era5 / 2030 | village/gridvillage × {synthetic, ERA5}, 4h battery | ERA5 solar + 4h costed battery | coordination **still 0**; real solar drives diesel 2.9%→**16.9%**, cost +$2.7M | ✅ complete |
+| [EXP-004](#exp-004--land-capped-full-timor-off-vs-on) | 2026-06-25 | Do GIS land caps change the result? | timor / 2030 | village, gridvillage | per-village solar `Max_Cap_MW` (GIS) | caps **non-binding**; identical to EXP-001 ($64.63 M, 0/780) | ✅ complete |
+| [EXP-003](#exp-003--diversity-stress-test-do-archetype-shapes-unlock-coordination) | 2026-06-25 | Does load-shape diversity unlock coordination value? | timor_diverse / 2030 | village vs gridvillage(free) | 390/780 villages reshaped to midday load | **No** — free ON saves 0.0007% ($419); 2.5 MWh traded; refutes archetype hypothesis | ✅ complete |
 | [EXP-002](#exp-002--interconnection-cost-sensitivity-sweep) | 2026-06-25 | Where does coordination start to pay off? | timor / 2030 | `gridvillage` × cost scale | `connection_cost_scale` sweep | **nowhere** — even free connection saves 0.004% ($2.6k); 7.75 MWh traded | ✅ complete |
 | [EXP-001](#exp-001--full-timor-coordination-off-vs-on-baseline) | 2026-06-24 | Does grid coordination lower cost for full Timor? | timor / 2030 | `village`, `gridvillage` | baseline (first-pass interconnection costs) | OFF = ON = **$64.63 M/yr**; 0/780 connect | ✅ complete |
 
 ---
 
+## EXP-005 — Realism: ERA5 real solar + 4h costed battery
+**Date:** 2026-07-03 | **Status:** ✅ complete | **Datasets:** `timor` (synthetic), `timor_era5` (ERA5) | **Configs:** `jobs/*_bd4/`
+
+**Question.** The "no coordination + almost no diesel" result rested on two idealisations: synthetic clear-sky solar (identical every day, spatially synchronised) and a free-power battery whose duration floated to 5.3 h. Fixing both — does real ERA5 weather unlock coordination, and does a realistic 4 h battery change the diesel/reliability picture?
+
+**Setup.** Two levers, applied together (all runs 4 h costed battery):
+- **Battery realism:** power capex $0 → $30k/MW-yr (docs §4); new `battery_duration_h=4` lock (`E_CAP = 4·P_CAP`) in optimizer.jl.
+- **ERA5 solar:** `tools/solar_resource_era5.py` → real 2023 hourly per-village CF (mean 0.175, FLH 1537); `wire_era5_solar.py` slices the 8 rep weeks into `timor_era5`. Caveats: rep weeks chosen for load miss the year's worst cloudy days; spatial CF corr across Timor = 0.986 (weakly decorrelated).
+
+**Runs (2×2).**
+| Run | Solar | Coord | Total $M | Diesel % | Connected | Battery |
+|-----|-------|-------|----------|----------|-----------|---------|
+| R3 `village_timor_bd4` | synthetic | OFF | 70.88217 | 2.9% | — | 4.00 h |
+| R4 `gridvillage_timor_bd4` | synthetic | ON | 70.88217 | — | 0/780 | 4.00 h |
+| R1 `village_timor_era5_bd4` | ERA5 | OFF | 73.61193 | **16.9%** | — | 4.00 h |
+| R2 `gridvillage_timor_era5_bd4` | ERA5 | ON | 73.61193 | — | 0/780 | 4.00 h |
+
+NSE = 0 everywhere; duration lock verified (+780 constraint rows).
+
+**Results.**
+- **Coordination = 0 under real solar too.** ON = OFF to ~10 sig figs (synthetic $0; ERA5 ~$0.05/yr); **0/780 connect**. The 0.986 spatial correlation means Timor is cloudy island-wide at once — no surplus-here / deficit-there to trade.
+- **Real solar is what makes diesel matter.** Isolated cleanly (OFF, same battery): synthetic **2.9%** → ERA5 **16.9%** diesel; firm diesel capacity 6.7 → 24.7 MW; cost +$2.7 M. The battery realism (4 h + power cost) alone only moved diesel 1.9%→2.9% (+$6.3 M, mostly the added power capex). So the synthetic clear-sky bell was masking diesel's true ~17%-of-load backup role.
+
+**Conclusion.** Grid coordination earns **nothing** for Timor even under real irradiance + a realistic battery — closing the loop across EXP-001…005. The realistic standalone microgrid is **~$73.6 M/yr, 17% diesel**. Root cause: solar dominance + spatial synchronisation (small island) + cheap local storage/diesel.
+
+**Artifacts.** `results/{village,gridvillage}_timor{,_era5}_2030_reference_bd4.0/`, `tools/ntt/wire_era5_solar.py`, `village_points_timor.csv`, `solar_era5/` (gitignored), log `logs/realism_runs.log`.
+
+---
+
+## EXP-004 — Land-capped full Timor, OFF vs ON
+**Date:** 2026-06-25 | **Status:** ✅ complete | **Dataset:** `timor` with GIS solar `Max_Cap_MW` (from `ntt` branch `1096aa4`, merged)
+
+**Question.** Does capping each village's solar build to its developable-land ceiling (GIS resource assessment) change the coordination result?
+
+**Setup.** Per-village solar `Max_Cap_MW` (174–4692 MW, mean ~3.2 GW; `resource_siting.py`, 5 km buffer) + the enabled optimizer cap loop. village vs gridvillage, timor / 2030 / reference.
+
+**Results.** Caps are **non-binding** — village peak demand is ~0.16 MW (max 2.86), so caps sit ~1000×+ above any village's build. Identical to the uncapped EXP-001: OFF $64.63141317 M, ON $64.63141317 M, **0/780 connect**.
+
+**Conclusion.** Land is not Timor's constraint (abundant land vs tiny demand), so land caps don't change coordination — confirming the analytical bound and the 81-village Belu check at full scale.
+
+**Artifacts.** `results/{village,gridvillage}_timor_2030_reference/` (capped run; uncapped EXP-001 preserved at commit `9ac4059`).
+
+---
+
 ## EXP-003 — Diversity stress test: do archetype shapes unlock coordination?
-**Date:** 2026-06-25 | **Status:** 🟡 running | **Dataset:** `data_indonesia/2030/timor_diverse/` (built by `make_diverse_demand.py`)
+**Date:** 2026-06-25 | **Status:** ✅ complete | **Dataset:** `data_indonesia/2030/timor_diverse/` (built by `make_diverse_demand.py`)
 
 **Question.** EXP-002 found ~0 coordination benefit and pinned the cause to homogeneity (773/780 villages share one residential load shape). Does injecting load-**shape** diversity unlock coordination value — i.e., could real per-archetype load calculators actually matter?
 
@@ -42,10 +88,12 @@ a `results/<run-name>/` folder.
 **Runs.**
 | Run | scenario / scale | Connected | Traded MWh | Total $M | Outcome |
 |-----|------------------|-----------|------------|----------|---------|
-| `village_timor_diverse` | OFF | — | — | — | 🟡 running |
-| `gridvillage_timor_diverse_cc0.0` | ON, free | — | — | — | 🟡 queued |
+| `village_timor_diverse` | OFF | — | — | 57.82851 | optimal |
+| `gridvillage_timor_diverse_cc0.0` | ON, free | 780/780 | 2.5 | 57.82809 | optimal, gap 0% |
 
-**Results.** _pending._
+**Results.** Coordination saving (OFF − ON) = **$419/yr (0.0007%)** — *smaller* than the homogeneous case. All 780 connect (free) but only **2.5 MWh** traded island-wide. Making half the villages midday-load made them *more* solar-self-sufficient, so there was even less surplus to share.
+
+**Conclusion.** **Load-shape diversity does NOT unlock coordination — the archetype hypothesis is refuted.** The binding factor isn't demand timing but the solar resource: solar is the only variable generation and peaks at noon for every village at once, so demand diversity can't create *supply* complementarity, and cheap batteries shift each village's own solar locally rather than trade. Coordination would need anti-correlated generation, connection cheaper than local build, or stochastic weather — none present here.
 
 **Artifacts.** `results/village_timor_diverse_2030_reference/`, `results/gridvillage_timor_diverse_2030_reference_cc0.0/`, log `logs/diverse_test.log`, builder `make_diverse_demand.py`.
 
