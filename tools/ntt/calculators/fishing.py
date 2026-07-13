@@ -143,16 +143,23 @@ class FishingCalculator(Calculator):
 
     # ----------------------------------------------------------------- sizing
     def _equipment(self, village: Village, fish_ton, ice_ton, ice_external):
-        """Productive-asset list with quantities & prices (💰 section B).
-        Returns list of {id,name,units,price_juta,total_juta,active}."""
+        """Translate 💰 B30:J50: productive-asset quantities and investment.
+
+        ``calculated_units`` mirrors the sheet's capacity calculation; ``units``
+        mirrors the active/inactive IF() in column H.  Keeping both makes an
+        inactive row auditable without treating its equipment as installed.
+        """
         fish_kg = fish_ton * 1000.0
-        ice_day = ice_ton / 365.0 * 365.0  # target es/hari basis ~6 ton/day from r18
-        ice_per_day = self.ice_profit_target_juta / self.profit_per_ton_ice_juta / 365.0
+        fish_per_day = fish_ton / self.fishing_days
+        ice_per_day = ice_ton / self.ice_plant_days
         items = []
 
-        def add(act_id, units, price_juta, active):
-            items.append({"id": act_id, "units": units, "price_juta": price_juta,
-                          "total_juta": (units * price_juta) if active else 0.0,
+        def add(act_id, calculated_units, price_juta, active, *, price_basis=None):
+            units = calculated_units if active else 0
+            basis = calculated_units if price_basis is None else price_basis
+            items.append({"id": act_id, "calculated_units": calculated_units,
+                          "units": units, "price_juta": price_juta,
+                          "total_juta": (basis * price_juta) if active else 0.0,
                           "active": active})
 
         # epsilon-safe ceiling: the spreadsheet's CEILING() is exact, so guard
@@ -162,20 +169,35 @@ class FishingCalculator(Calculator):
 
         amap = {a.id: a for a in SUPPLY_CHAIN}
         boats = iceil(fish_kg / (self.catch_per_trip_kg * self.trips_per_boat_year))
-        add("AP1", boats, 50.0, amap["AP1"].active)            # electric boats
-        add("AP2", boats, 2.0, amap["AP2"].active)             # LED sets (1/boat)
-        add("AP3", boats, 5.0, amap["AP3"].active)             # nav (inactive)
+        add("AP1", boats, 50.0, amap["AP1"].active)             # 💰 H30/J30
+        add("AP2", boats, 2.0, amap["AP2"].active)              # 💰 H31/J31
+        add("AP3", boats, 5.0, amap["AP3"].active)              # 💰 H32/J32
         tpi_kw = self.tpi_area_m2 * self.lighting_w_per_m2 / 1000.0
-        add("AP4", iceil(tpi_kw / 0.036), 0.15, amap["AP4"].active)  # 36W LED panels
-        add("AP5", 3, 10.0, amap["AP5"].active)                # weighing/sorting
+        add("AP4", iceil(tpi_kw / 0.036), 0.15, amap["AP4"].active)  # 💰 H34/J34
+        sorting_units = iceil((fish_per_day + ice_per_day) / 3.0)
+        add("AP5", sorting_units, 10.0, amap["AP5"].active)     # 💰 H35/J35
         ice_cap = ice_per_day * self.ice_buffer
-        add("AP6", iceil(ice_cap / self.ice_unit_ton_day), 180.0, amap["AP6"].active)
+        add("AP6", iceil(ice_cap / self.ice_unit_ton_day), 180.0,
+            amap["AP6"].active)                                 # 💰 H37/J37
         cold_vol = (fish_ton * self.cold_store_days / 365.0
                     / self.cold_store_density * self.cold_store_buffer)
-        add("AP7", iceil(cold_vol), 22.0, amap["AP7"].active)
-        add("AP12", 1, 5.0, amap["AP12"].active)               # water pump
+        cold_m3 = iceil(cold_vol)
+        # Cold-room and blast-freezer prices are per m3, while column H is one
+        # installed system.  ``price_basis`` reproduces J38/J39 exactly.
+        add("AP7", 1, 22.0, amap["AP7"].active, price_basis=cold_m3)  # 💰 H38/J38
+        add("AP8", 1, 40.0, amap["AP8"].active, price_basis=cold_m3)  # 💰 H39/J39
+        add("AP9", iceil(fish_per_day / 0.5), 20.0, amap["AP9"].active)  # 💰 H41
+        add("AP10", iceil(fish_per_day / 0.3), 75.0, amap["AP10"].active)  # 💰 H42
+        add("AP11", iceil(fish_per_day), 15.0, amap["AP11"].active)  # 💰 H43
+        water_m3_day = (fish_ton * self.water_m3_per_ton_fish / self.fishing_days
+                        + ice_per_day * self.water_m3_per_ton_ice)
+        pump_units = iceil(water_m3_day / 8.0 / 1.5)
+        add("AP12", pump_units, 5.0, amap["AP12"].active)        # 💰 H45/J45
+        add("AP13", iceil(20.0 / 5.0), 3.0, amap["AP13"].active)  # 💰 H46/J46
         proc_kw = self.processing_area_m2 * self.lighting_w_per_m2 / 1000.0
-        add("AP14", iceil(proc_kw / 0.036), 0.15, amap["AP14"].active)
+        add("AP14", iceil(proc_kw / 0.036), 0.15, amap["AP14"].active)  # 💰 H47
+        add("AP15", iceil(ice_per_day / 3.0), 350.0, amap["AP15"].active)  # 💰 J49
+        add("AP16", 2, 8.0, amap["AP16"].active)                 # 💰 H50/J50
         return items
 
     def sizing(self, village: Village, demand: DemandResult) -> SizingResult:

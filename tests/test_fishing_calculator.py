@@ -35,6 +35,29 @@ def test_sizing():
     assert abs(s.battery_kwh - 713.8) < 0.2       # 🐟·r60
     assert abs(s.detail["equipment_total_juta"] - 744.35) < 0.01   # 💰·r54
 
+    equipment = {item["id"]: item for item in s.equipment}
+    assert len(equipment) == 16
+    assert equipment["AP1"]["units"] == 4                 # 💰·H30
+    assert equipment["AP4"]["units"] == 84                # 💰·H34
+    assert equipment["AP5"]["units"] == 3                 # 💰·H35
+    assert equipment["AP6"]["units"] == 2                 # 💰·H37
+    assert equipment["AP7"]["total_juta"] == 110          # 💰·J38
+    assert equipment["AP14"]["units"] == 125              # 💰·H47
+    assert equipment["AP15"]["units"] == 0                # inactive in 🐟·F47
+
+
+def test_equipment_respects_village_production_overrides():
+    """Equipment formulas must use the village override, not workbook defaults."""
+    calc = FishingCalculator()
+    v = _demo_village()
+    v.extras = {"fish_profit_target_juta": 1660.0,
+                "ice_profit_target_juta": 2190.0}
+    d = calc.demand(v)
+    equipment = {item["id"]: item for item in calc.sizing(v, d).equipment}
+    assert equipment["AP1"]["units"] == 8
+    assert equipment["AP5"]["units"] == 5
+    assert equipment["AP6"]["units"] == 4
+
 
 def test_investment():
     calc = FishingCalculator()
@@ -56,6 +79,8 @@ def test_revenue_models():
 
 
 if __name__ == "__main__":
-    for fn in [test_annual_demand, test_sizing, test_investment, test_revenue_models]:
+    for fn in [test_annual_demand, test_sizing,
+               test_equipment_respects_village_production_overrides,
+               test_investment, test_revenue_models]:
         fn()
         print(f"PASS {fn.__name__}")
